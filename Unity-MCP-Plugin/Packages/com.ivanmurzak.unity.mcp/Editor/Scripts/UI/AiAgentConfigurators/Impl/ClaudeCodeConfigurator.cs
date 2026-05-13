@@ -153,46 +153,88 @@ namespace com.IvanMurzak.Unity.MCP.Editor.UI
         void RegisterMppmClones()
         {
             var clones = DiscoverMppmClones();
-            if (clones.Count == 0)
+            if (!File.Exists(LocalConfigPath))
                 return;
 
-            foreach (var clone in clones)
+            try
             {
-                var serverName = $"{AiAgentConfig.DefaultMcpServerName}{MppmCloneSuffix(clone.name)}";
-                var config = new JsonAiAgentConfig(
-                    name: AgentName,
-                    configPath: LocalConfigPath,
-                    bodyPath: "mcpServers",
-                    serverName: serverName
-                )
-                .SetProperty("command", JsonValue.Create(McpServerManager.ExecutableFullPath.Replace('\\', '/')),
-                    requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
-                .SetProperty("args", new JsonArray
-                {
-                    $"{Args.Port}={clone.port}",
-                    $"{Args.PluginTimeout}={UnityMcpPluginEditor.TimeoutMs}",
-                    $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
-                    $"{Args.Authorization}={UnityMcpPluginEditor.AuthOption}",
-                    $"{Args.Token}={UnityMcpPluginEditor.Token}"
-                }, requiredForConfiguration: true);
+                var json = File.ReadAllText(LocalConfigPath);
+                var rootObj = System.Text.Json.Nodes.JsonNode.Parse(json)?.AsObject();
+                if (rootObj == null) return;
 
-                config.Configure();
+                var mcpServers = rootObj["mcpServers"]?.AsObject();
+                if (mcpServers == null) return;
+
+                // Remove stale clone entries
+                var keysToRemove = new List<string>();
+                foreach (var kv in mcpServers)
+                {
+                    if (kv.Key.StartsWith($"{AiAgentConfig.DefaultMcpServerName}-player-"))
+                        keysToRemove.Add(kv.Key);
+                }
+                foreach (var key in keysToRemove)
+                    mcpServers.Remove(key);
+
+                // Add fresh entries for each discovered clone
+                var command = McpServerManager.ExecutableFullPath.Replace('\\', '/');
+                foreach (var clone in clones)
+                {
+                    var serverName = $"{AiAgentConfig.DefaultMcpServerName}{MppmCloneSuffix(clone.name)}";
+                    mcpServers[serverName] = new JsonObject
+                    {
+                        ["command"] = command,
+                        ["args"] = new JsonArray
+                        {
+                            $"{Args.Port}={clone.port}",
+                            $"{Args.PluginTimeout}={UnityMcpPluginEditor.TimeoutMs}",
+                            $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
+                            $"{Args.Authorization}={UnityMcpPluginEditor.AuthOption}",
+                            $"{Args.Token}={UnityMcpPluginEditor.Token}"
+                        }
+                    };
+                }
+
+                var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(LocalConfigPath, rootObj.ToJsonString(options));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error registering MPPM clones: {e.Message}");
             }
         }
 
         void UnregisterMppmClones()
         {
-            var clones = DiscoverMppmClones();
-            foreach (var clone in clones)
+            if (!File.Exists(LocalConfigPath))
+                return;
+
+            try
             {
-                var serverName = $"{AiAgentConfig.DefaultMcpServerName}{MppmCloneSuffix(clone.name)}";
-                var config = new JsonAiAgentConfig(
-                    name: AgentName,
-                    configPath: LocalConfigPath,
-                    bodyPath: "mcpServers",
-                    serverName: serverName
-                );
-                config.Unconfigure();
+                var json = File.ReadAllText(LocalConfigPath);
+                var rootObj = System.Text.Json.Nodes.JsonNode.Parse(json)?.AsObject();
+                if (rootObj == null) return;
+
+                var mcpServers = rootObj["mcpServers"]?.AsObject();
+                if (mcpServers == null) return;
+
+                var keysToRemove = new List<string>();
+                foreach (var kv in mcpServers)
+                {
+                    if (kv.Key.StartsWith($"{AiAgentConfig.DefaultMcpServerName}-player-"))
+                        keysToRemove.Add(kv.Key);
+                }
+
+                if (keysToRemove.Count == 0) return;
+
+                foreach (var key in keysToRemove)
+                    mcpServers.Remove(key);
+
+                var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+                File.WriteAllText(LocalConfigPath, rootObj.ToJsonString(options));
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"Error unregistering MPPM clones: {e.Message}");
             }
         }
 

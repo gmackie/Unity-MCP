@@ -33,15 +33,13 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 UnityMcpPluginEditor.KeepConnected = true;
                 UnityMcpPluginEditor.KeepServerRunning = true;
 
-                // MPPM clones must connect to the main editor's MCP server.
-                // Clone paths are <main-project>/Library/VP/<cloneId>, so we
-                // derive the main project directory and compute its port.
-                var cloneDataPath = Application.dataPath; // .../Library/VP/<id>/Assets
-                var cloneProjectDir = System.IO.Path.GetDirectoryName(cloneDataPath)!;
-                var mainProjectDir = System.IO.Path.GetFullPath(
-                    System.IO.Path.Combine(cloneProjectDir, "..", "..", ".."));
-                var mainPort = UnityMcpPlugin.GeneratePortFromDirectory(mainProjectDir);
-                UnityMcpPluginEditor.LocalHost = $"http://localhost:{mainPort}";
+                // Environment.CurrentDirectory is NOT the VP directory for clones,
+                // so the default port derivation is wrong. Compute from Application.dataPath
+                // which correctly points to <project>/Library/VP/<cloneId>/Assets.
+                var cloneProjectDir = System.IO.Path.GetDirectoryName(Application.dataPath)!;
+                var clonePort = UnityMcpPlugin.GeneratePortFromDirectory(cloneProjectDir);
+                UnityMcpPluginEditor.Host = $"http://localhost:{clonePort}";
+                UnityMcpPluginEditor.LocalHost = $"http://localhost:{clonePort}";
                 UnityMcpPluginEditor.AuthOption = AuthOption.none;
             }
 
