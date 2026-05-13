@@ -9,8 +9,10 @@
 */
 
 #nullable enable
+using System.Collections.Generic;
 using com.IvanMurzak.Unity.MCP.Editor.UI;
 using com.IvanMurzak.Unity.MCP.Editor.Utils;
+using com.IvanMurzak.Unity.MCP.Runtime.Utils;
 using com.IvanMurzak.Unity.MCP.Utils;
 using UnityEditor;
 using UnityEngine;
@@ -25,8 +27,17 @@ namespace com.IvanMurzak.Unity.MCP.Editor
 
         static Startup()
         {
+            if (MppmUtils.IsMppmClone)
+            {
+                UnityMcpPluginEditor.KeepConnected = true;
+                UnityMcpPluginEditor.KeepServerRunning = true;
+            }
+
             UnityMcpPluginEditor.Instance.BuildMcpPluginIfNeeded();
             UnityMcpPluginEditor.Instance.AddUnityLogCollectorIfNeeded(() => new BufferedFileLogStorage());
+
+            if (MppmUtils.IsMppmClone)
+                DisableWriteToolsForClone();
 
             if (Application.dataPath.Contains(" "))
                 Debug.LogError("The project path contains spaces, which may cause issues during usage of AI Game Developer. Please consider the move the project to a folder without spaces.");
@@ -38,14 +49,40 @@ namespace com.IvanMurzak.Unity.MCP.Editor
             UpdateChecker.Init();
             PackageUtils.Init();
 
-            // Auto-generate skill files for the selected agent if enabled
-            var savedAgentId = MainWindowEditor.selectedAiAgentId.Value;
-            var agent = AiAgentConfiguratorRegistry.GetByAgentId(savedAgentId);
-            if (agent?.SupportsSkills == true && UnityMcpPluginEditor.IsAutoGenerateSkills(agent.AgentId))
+            if (!MppmUtils.IsMppmClone)
             {
-                UnityMcpPluginEditor.SkillsPath = agent.SkillsPath!;
-                UnityMcpPluginEditor.Instance.McpPluginInstance!.GenerateSkillFiles(UnityMcpPluginEditor.ProjectRootPath);
+                // Auto-generate skill files for the selected agent if enabled
+                var savedAgentId = MainWindowEditor.selectedAiAgentId.Value;
+                var agent = AiAgentConfiguratorRegistry.GetByAgentId(savedAgentId);
+                if (agent?.SupportsSkills == true && UnityMcpPluginEditor.IsAutoGenerateSkills(agent.AgentId))
+                {
+                    UnityMcpPluginEditor.SkillsPath = agent.SkillsPath!;
+                    UnityMcpPluginEditor.Instance.McpPluginInstance!.GenerateSkillFiles(UnityMcpPluginEditor.ProjectRootPath);
+                }
             }
+        }
+
+        static void DisableWriteToolsForClone()
+        {
+            var tools = UnityMcpPluginEditor.Instance.Tools;
+            if (tools == null) return;
+
+            var writeTools = new HashSet<string>
+            {
+                "script-update-or-create", "script-delete",
+                "assets-create-folder", "assets-delete", "assets-move", "assets-copy", "assets-modify",
+                "assets-prefab-create", "assets-prefab-save", "assets-prefab-close", "assets-prefab-open",
+                "assets-material-create",
+                "scene-create", "scene-save",
+                "package-add", "package-remove",
+                "gameobject-create", "gameobject-destroy", "gameobject-duplicate",
+                "gameobject-modify", "gameobject-set-parent",
+                "gameobject-component-add", "gameobject-component-destroy", "gameobject-component-modify",
+                "object-modify",
+            };
+
+            foreach (var toolName in writeTools)
+                tools.SetToolEnabled(toolName, false);
         }
     }
 }

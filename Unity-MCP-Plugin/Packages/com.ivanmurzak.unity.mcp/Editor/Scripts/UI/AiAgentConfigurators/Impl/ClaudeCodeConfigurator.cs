@@ -9,9 +9,15 @@
 */
 
 #nullable enable
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json.Nodes;
 using com.IvanMurzak.Unity.MCP.Editor.Utils;
+using com.IvanMurzak.Unity.MCP.Runtime.Utils;
+using R3;
+using UnityEngine;
 using UnityEngine.UIElements;
 using static com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server;
 
@@ -83,6 +89,119 @@ namespace com.IvanMurzak.Unity.MCP.Editor.UI
         .SetProperty("url", JsonValue.Create(UnityMcpPluginEditor.Host), requiredForConfiguration: true, comparison: ValueComparisonMode.Url)
         .SetPropertyToRemove("command")
         .SetPropertyToRemove("args");
+
+        protected override void ReconfigureDetectedConfigs()
+        {
+            base.ReconfigureDetectedConfigs();
+            SyncMppmCloneConfigs();
+        }
+
+        protected override AiAgentConfigurator SetConfigureStatusIndicator()
+        {
+            var result = base.SetConfigureStatusIndicator();
+
+            // Hook into both transport config buttons to register/unregister clones
+            if (_configElementStdio != null)
+                _subscriptionMppmStdio = _configElementStdio.OnConfigured.Subscribe(configured =>
+                {
+                    if (configured) SyncMppmCloneConfigs();
+                    else UnregisterMppmClones();
+                });
+            if (_configElementHttp != null)
+                _subscriptionMppmHttp = _configElementHttp.OnConfigured.Subscribe(configured =>
+                {
+                    if (configured) SyncMppmCloneConfigs();
+                    else UnregisterMppmClones();
+                });
+
+            return result;
+        }
+
+        private IDisposable? _subscriptionMppmStdio;
+        private IDisposable? _subscriptionMppmHttp;
+
+        void SyncMppmCloneConfigs()
+        {
+            if (MppmUtils.IsMppmClone)
+                return;
+            RegisterMppmClones();
+        }
+
+        static List<(string name, string id, string path, int port)> DiscoverMppmClones()
+        {
+            var clones = new List<(string name, string id, string path, int port)>();
+            var vpDir = Path.Combine(Application.dataPath, "..", "Library", "VP");
+            if (!Directory.Exists(vpDir))
+                return clones;
+
+            var dirs = Directory.GetDirectories(vpDir, "mppm*")
+                                .OrderBy(d => d)
+                                .ToList();
+
+            for (int i = 0; i < dirs.Count; i++)
+            {
+                var cloneDir = dirs[i];
+                var cloneId = Path.GetFileName(cloneDir);
+                var playerIndex = i + 2;
+                var name = $"Player {playerIndex}";
+                var port = UnityMcpPlugin.GeneratePortFromDirectory(cloneDir);
+                clones.Add((name, cloneId, cloneDir, port));
+            }
+            return clones;
+        }
+
+        void RegisterMppmClones()
+        {
+            var clones = DiscoverMppmClones();
+            if (clones.Count == 0)
+                return;
+
+            foreach (var clone in clones)
+            {
+                var serverName = $"{AiAgentConfig.DefaultMcpServerName}{MppmCloneSuffix(clone.name)}";
+                var config = new JsonAiAgentConfig(
+                    name: AgentName,
+                    configPath: LocalConfigPath,
+                    bodyPath: "mcpServers",
+                    serverName: serverName
+                )
+                .SetProperty("command", JsonValue.Create(McpServerManager.ExecutableFullPath.Replace('\\', '/')),
+                    requiredForConfiguration: true, comparison: ValueComparisonMode.Path)
+                .SetProperty("args", new JsonArray
+                {
+                    $"{Args.Port}={clone.port}",
+                    $"{Args.PluginTimeout}={UnityMcpPluginEditor.TimeoutMs}",
+                    $"{Args.ClientTransportMethod}={TransportMethod.stdio}",
+                    $"{Args.Authorization}={UnityMcpPluginEditor.AuthOption}",
+                    $"{Args.Token}={UnityMcpPluginEditor.Token}"
+                }, requiredForConfiguration: true);
+
+                config.Configure();
+            }
+        }
+
+        void UnregisterMppmClones()
+        {
+            var clones = DiscoverMppmClones();
+            foreach (var clone in clones)
+            {
+                var serverName = $"{AiAgentConfig.DefaultMcpServerName}{MppmCloneSuffix(clone.name)}";
+                var config = new JsonAiAgentConfig(
+                    name: AgentName,
+                    configPath: LocalConfigPath,
+                    bodyPath: "mcpServers",
+                    serverName: serverName
+                );
+                config.Unconfigure();
+            }
+        }
+
+        static string MppmCloneSuffix(string cloneName)
+        {
+            var lower = cloneName.Trim().ToLowerInvariant();
+            var kebab = System.Text.RegularExpressions.Regex.Replace(lower, @"[^a-z0-9]+", "-").Trim('-');
+            return string.IsNullOrEmpty(kebab) ? string.Empty : $"-{kebab}";
+        }
 
         protected override void OnUICreated(VisualElement root)
         {

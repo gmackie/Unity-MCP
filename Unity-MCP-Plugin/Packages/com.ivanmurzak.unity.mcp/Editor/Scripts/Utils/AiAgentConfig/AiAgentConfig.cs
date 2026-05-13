@@ -27,6 +27,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
         public string Name { get; set; }
         public string ConfigPath { get; set; }
         public string BodyPath { get; set; }
+        public virtual string ServerName => DefaultMcpServerName;
         public abstract string ExpectedFileContent { get; }
         public IReadOnlyList<string> IdentityKeys => _identityKeys;
 

@@ -51,7 +51,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor
     [InitializeOnLoad]
     public static class McpServerManager
     {
-        const string ProcessIdKey = "McpServerManager_ProcessId";
+        static string ProcessIdKey => MppmUtils.IsMppmClone
+            ? $"McpServerManager_ProcessId_{MppmUtils.CloneId}"
+            : "McpServerManager_ProcessId";
         const string McpServerProcessName = "unity-mcp-server";
 
         static readonly ILogger _logger = UnityLoggerFactory.LoggerFactory.CreateLogger(typeof(McpServerManager));
@@ -94,9 +96,17 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         public const string ExecutableName = "unity-mcp-server";
 
         public static string McpServerName
-            => string.IsNullOrEmpty(Application.productName)
-                ? "Unity Unknown"
-                : $"Unity {Application.productName}";
+        {
+            get
+            {
+                var baseName = string.IsNullOrEmpty(Application.productName)
+                    ? "Unity Unknown"
+                    : $"Unity {Application.productName}";
+                return MppmUtils.IsMppmClone
+                    ? $"{baseName} ({MppmUtils.CloneName})"
+                    : baseName;
+            }
+        }
 
         public static string OperationSystem =>
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" :
@@ -274,6 +284,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor
 
         public static Task<bool> DownloadServerBinaryIfNeeded()
         {
+            if (MppmUtils.IsMppmClone)
+                return Task.FromResult(IsBinaryExists());
+
             if (EnvironmentUtils.IsCi())
             {
                 // Ignore in CI environment

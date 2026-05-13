@@ -27,6 +27,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
 
         private readonly Dictionary<string, (JsonNode value, bool required, ValueComparisonMode comparison)> _properties = new();
         private readonly HashSet<string> _propertiesToRemove = new();
+        private readonly string? _serverNameOverride;
+
+        public override string ServerName => _serverNameOverride ?? DefaultMcpServerName;
 
         public override string ExpectedFileContent
         {
@@ -37,7 +40,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
 
                 var innerContent = new JsonObject
                 {
-                    [DefaultMcpServerName] = serverConfig
+                    [ServerName] = serverConfig
                 };
 
                 // Build nested structure from innermost to outermost
@@ -54,13 +57,14 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
         public JsonAiAgentConfig(
             string name,
             string configPath,
-            string bodyPath = Consts.MCP.Server.DefaultBodyPath)
+            string bodyPath = Consts.MCP.Server.DefaultBodyPath,
+            string? serverName = null)
             : base(
                 name: name,
                 configPath: configPath,
                 bodyPath: bodyPath)
         {
-            // empty
+            _serverNameOverride = serverName;
         }
 
         public JsonAiAgentConfig SetProperty(string key, JsonNode value, bool requiredForConfiguration = false, ValueComparisonMode comparison = ValueComparisonMode.Exact)
@@ -171,16 +175,15 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
                 // Remove duplicate entries that represent the same server under a different name
                 RemoveDuplicateServerEntries(targetObj);
 
-                // Get or create the server entry under DefaultMcpServerName
                 JsonObject serverEntry;
-                if (targetObj[DefaultMcpServerName]?.AsObject() is JsonObject existingEntry)
+                if (targetObj[ServerName]?.AsObject() is JsonObject existingEntry)
                 {
                     serverEntry = existingEntry;
                 }
                 else
                 {
                     serverEntry = new JsonObject();
-                    targetObj[DefaultMcpServerName] = serverEntry;
+                    targetObj[ServerName] = serverEntry;
                 }
 
                 // Remove specified properties from the entry
@@ -228,9 +231,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
 
                 var removed = false;
 
-                if (targetObj[DefaultMcpServerName] != null)
+                if (targetObj[ServerName] != null)
                 {
-                    targetObj.Remove(DefaultMcpServerName);
+                    targetObj.Remove(ServerName);
                     removed = true;
                 }
 
@@ -286,7 +289,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
                 if (targetObj == null)
                     return false;
 
-                if (targetObj[DefaultMcpServerName] != null)
+                if (targetObj[ServerName] != null)
                     return true;
 
                 foreach (var name in DeprecatedMcpServerNames)
@@ -326,7 +329,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
                 if (targetObj == null)
                     return false;
 
-                var serverEntry = targetObj[DefaultMcpServerName];
+                var serverEntry = targetObj[ServerName];
                 if (serverEntry == null)
                     return false;
 
@@ -464,7 +467,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
             var keys = new List<string>();
             foreach (var kv in targetObj)
             {
-                if (kv.Key == DefaultMcpServerName)
+                if (kv.Key == ServerName)
                     continue;
 
                 var entry = kv.Value?.AsObject();

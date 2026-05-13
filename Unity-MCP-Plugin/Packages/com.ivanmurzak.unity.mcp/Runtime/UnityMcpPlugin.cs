@@ -251,24 +251,28 @@ namespace com.IvanMurzak.Unity.MCP
         /// Port range: 20000-29999 (avoids Windows ephemeral/reserved port ranges).
         /// </summary>
         public static int GeneratePortFromDirectory()
+            => GeneratePortFromDirectory(Environment.CurrentDirectory);
+
+        /// <summary>
+        /// Generate a deterministic TCP port based on the given directory path.
+        /// Used by the main editor to compute ports for MPPM clone directories.
+        /// </summary>
+        public static int GeneratePortFromDirectory(string directory)
         {
-            const int MinPort = 20000; // Range chosen to avoid Windows ephemeral/reserved ports (49152-65535)
+            const int MinPort = 20000;
             const int MaxPort = 29999;
             const int PortRange = MaxPort - MinPort + 1;
 
-            var currentDir = Environment.CurrentDirectory.ToLowerInvariant();
+            var normalizedDir = directory.ToLowerInvariant();
 
             using (var sha256 = System.Security.Cryptography.SHA256.Create())
             {
-                var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(currentDir));
+                var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(normalizedDir));
 
                 // Use first 4 bytes as an unsigned integer to avoid Math.Abs(int.MinValue) overflow
                 var hash = (uint)BitConverter.ToInt32(hashBytes, 0);
 
-                // Map to port range
-                var port = MinPort + (int)(hash % PortRange);
-
-                return port;
+                return MinPort + (int)(hash % PortRange);
             }
         }
     }
