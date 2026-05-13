@@ -194,7 +194,11 @@ namespace com.IvanMurzak.Unity.MCP.Editor.UI
                     };
                 }
 
-                var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
+                };
                 File.WriteAllText(LocalConfigPath, rootObj.ToJsonString(options));
             }
             catch (System.Exception e)
@@ -229,7 +233,11 @@ namespace com.IvanMurzak.Unity.MCP.Editor.UI
                 foreach (var key in keysToRemove)
                     mcpServers.Remove(key);
 
-                var options = new System.Text.Json.JsonSerializerOptions { WriteIndented = true };
+                var options = new System.Text.Json.JsonSerializerOptions
+                {
+                    WriteIndented = true,
+                    TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver()
+                };
                 File.WriteAllText(LocalConfigPath, rootObj.ToJsonString(options));
             }
             catch (System.Exception e)
