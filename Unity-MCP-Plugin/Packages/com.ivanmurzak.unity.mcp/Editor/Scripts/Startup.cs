@@ -18,6 +18,7 @@ using UnityEditor;
 using UnityEngine;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 using static com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server;
+using System.Text.Json;
 
 namespace com.IvanMurzak.Unity.MCP.Editor
 {
@@ -33,13 +34,36 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 UnityMcpPluginEditor.KeepConnected = true;
                 UnityMcpPluginEditor.KeepServerRunning = true;
 
-                // Environment.CurrentDirectory is NOT the VP directory for clones,
-                // so the default port derivation is wrong. Compute from Application.dataPath
-                // which correctly points to <project>/Library/VP/<cloneId>/Assets.
-                var cloneProjectDir = System.IO.Path.GetDirectoryName(Application.dataPath)!;
-                var clonePort = UnityMcpPlugin.GeneratePortFromDirectory(cloneProjectDir);
-                UnityMcpPluginEditor.Host = $"http://localhost:{clonePort}";
-                UnityMcpPluginEditor.LocalHost = $"http://localhost:{clonePort}";
+                // MPPM clones live at <project>/Library/VP/<cloneId>/.
+                // Application.dataPath → <project>/Library/VP/<cloneId>/Assets.
+                // Navigate up to the main project root and read its saved config
+                // to get the host/port the MCP server is actually listening on.
+                var mainProjectDir = System.IO.Path.GetFullPath(
+                    System.IO.Path.Combine(Application.dataPath, "..", "..", "..", ".."));
+                var mainConfigPath = System.IO.Path.Combine(
+                    mainProjectDir, "UserSettings", "AI-Game-Developer-Config.json");
+
+                string mainHost = $"http://localhost:{UnityMcpPlugin.GeneratePortFromDirectory(mainProjectDir)}";
+                if (System.IO.File.Exists(mainConfigPath))
+                {
+                    try
+                    {
+                        var json = System.IO.File.ReadAllText(mainConfigPath);
+                        using var doc = JsonDocument.Parse(json);
+                        if (doc.RootElement.TryGetProperty("host", out var hostProp))
+                        {
+                            var h = hostProp.GetString();
+                            if (!string.IsNullOrEmpty(h))
+                                mainHost = h;
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        _logger.LogWarning("Failed to read main project config at {path}: {error}", mainConfigPath, ex.Message);
+                    }
+                }
+                UnityMcpPluginEditor.Host = mainHost;
+                UnityMcpPluginEditor.LocalHost = mainHost;
                 UnityMcpPluginEditor.AuthOption = AuthOption.none;
             }
 
