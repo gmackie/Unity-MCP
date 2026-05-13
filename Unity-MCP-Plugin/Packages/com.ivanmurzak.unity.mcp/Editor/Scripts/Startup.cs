@@ -17,6 +17,7 @@ using com.IvanMurzak.Unity.MCP.Utils;
 using UnityEditor;
 using UnityEngine;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
+using static com.IvanMurzak.McpPlugin.Common.Consts.MCP.Server;
 
 namespace com.IvanMurzak.Unity.MCP.Editor
 {
@@ -31,6 +32,17 @@ namespace com.IvanMurzak.Unity.MCP.Editor
             {
                 UnityMcpPluginEditor.KeepConnected = true;
                 UnityMcpPluginEditor.KeepServerRunning = true;
+
+                // MPPM clones must connect to the main editor's MCP server.
+                // Clone paths are <main-project>/Library/VP/<cloneId>, so we
+                // derive the main project directory and compute its port.
+                var cloneDataPath = Application.dataPath; // .../Library/VP/<id>/Assets
+                var cloneProjectDir = System.IO.Path.GetDirectoryName(cloneDataPath)!;
+                var mainProjectDir = System.IO.Path.GetFullPath(
+                    System.IO.Path.Combine(cloneProjectDir, "..", "..", ".."));
+                var mainPort = UnityMcpPlugin.GeneratePortFromDirectory(mainProjectDir);
+                UnityMcpPluginEditor.LocalHost = $"http://localhost:{mainPort}";
+                UnityMcpPluginEditor.AuthOption = AuthOption.none;
             }
 
             UnityMcpPluginEditor.Instance.BuildMcpPluginIfNeeded();
