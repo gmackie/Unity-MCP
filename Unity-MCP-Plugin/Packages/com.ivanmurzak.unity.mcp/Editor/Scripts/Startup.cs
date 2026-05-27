@@ -32,18 +32,20 @@ namespace com.IvanMurzak.Unity.MCP.Editor
             if (MppmUtils.IsMppmClone)
             {
                 UnityMcpPluginEditor.KeepConnected = true;
-                UnityMcpPluginEditor.KeepServerRunning = true;
+                UnityMcpPluginEditor.KeepServerRunning = false;
 
                 // MPPM clones live at <project>/Library/VP/<cloneId>/.
                 // Application.dataPath → <project>/Library/VP/<cloneId>/Assets.
                 // Navigate up to the main project root and read its saved config
                 // to get the host/port the MCP server is actually listening on.
+                // Clones only connect as hub clients — they never start a server.
                 var mainProjectDir = System.IO.Path.GetFullPath(
                     System.IO.Path.Combine(Application.dataPath, "..", "..", "..", ".."));
                 var mainConfigPath = System.IO.Path.Combine(
                     mainProjectDir, "UserSettings", "AI-Game-Developer-Config.json");
 
                 string mainHost = $"http://localhost:{UnityMcpPlugin.GeneratePortFromDirectory(mainProjectDir)}";
+                string? mainToken = null;
                 if (System.IO.File.Exists(mainConfigPath))
                 {
                     try
@@ -56,6 +58,8 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                             if (!string.IsNullOrEmpty(h))
                                 mainHost = h;
                         }
+                        if (doc.RootElement.TryGetProperty("token", out var tokenProp))
+                            mainToken = tokenProp.GetString();
                     }
                     catch (System.Exception ex)
                     {
@@ -64,6 +68,8 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 }
                 UnityMcpPluginEditor.Host = mainHost;
                 UnityMcpPluginEditor.LocalHost = mainHost;
+                if (mainToken != null)
+                    UnityMcpPluginEditor.Token = mainToken;
                 UnityMcpPluginEditor.AuthOption = AuthOption.none;
             }
 
