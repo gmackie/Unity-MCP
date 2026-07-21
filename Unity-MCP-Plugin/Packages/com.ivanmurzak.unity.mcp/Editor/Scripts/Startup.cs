@@ -14,6 +14,7 @@ using com.IvanMurzak.Unity.MCP.Editor.UI;
 using com.IvanMurzak.Unity.MCP.Editor.Utils;
 using com.IvanMurzak.Unity.MCP.Runtime.Utils;
 using com.IvanMurzak.Unity.MCP.Utils;
+using Microsoft.Extensions.Logging;
 using UnityEditor;
 using UnityEngine;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
