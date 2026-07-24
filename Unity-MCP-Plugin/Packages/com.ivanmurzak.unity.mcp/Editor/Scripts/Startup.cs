@@ -140,6 +140,8 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 "gameobject-modify", "gameobject-set-parent",
                 "gameobject-component-add", "gameobject-component-destroy", "gameobject-component-modify",
                 "object-modify",
+                // A clone must never be able to spawn or tear down other clones.
+                "mppm-activate-player", "mppm-deactivate-player",
             };
 
             foreach (var toolName in writeTools)
