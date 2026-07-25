@@ -57,7 +57,10 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
 
         /// <summary>
         /// Ensure MPPM's runtime state is armed so the player slots are populated. Idempotent — safe to call
-        /// before every operation. No-op (returns false) when MPPM is not installed.
+        /// before every operation. Returns false (never throws) when MPPM cannot be initialized — either
+        /// its types are absent, or (the common Unity 6 case) the types are built in but the project has no
+        /// MPPM data store because the package isn't installed/configured, which makes Unity's own
+        /// UpdateMPPMRuntimeState throw deep inside SystemDataStore. We swallow that and report "not usable".
         /// </summary>
         public static bool EnsureInitialized()
         {
@@ -65,21 +68,31 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
             if (workflow == null)
                 return false;
 
-            var isInitialized = workflow.GetProperty("IsInitialized", StaticMembers)?.GetValue(null) as bool?;
-            if (isInitialized == true)
-                return true;
+            try
+            {
+                var isInitialized = workflow.GetProperty("IsInitialized", StaticMembers)?.GetValue(null) as bool?;
+                if (isInitialized == true)
+                    return true;
 
-            var update = workflow.GetMethod("UpdateMPPMRuntimeState", StaticMembers);
-            update?.Invoke(null, new object[] { true });
+                var update = workflow.GetMethod("UpdateMPPMRuntimeState", StaticMembers);
+                if (update == null)
+                    return false;
 
-            return workflow.GetProperty("IsInitialized", StaticMembers)?.GetValue(null) as bool? ?? false;
+                update.Invoke(null, new object[] { true });
+
+                return workflow.GetProperty("IsInitialized", StaticMembers)?.GetValue(null) as bool? ?? false;
+            }
+            catch
+            {
+                // MPPM types exist but the project isn't MPPM-configured (no data store) — not usable here.
+                return false;
+            }
         }
 
-        /// <summary>List all four player slots. Throws <see cref="MppmUnavailableException"/> when MPPM is absent.</summary>
+        /// <summary>List all four player slots. Throws <see cref="MppmUnavailableException"/> when MPPM is not usable.</summary>
         public static List<PlayerInfo> ListPlayers()
         {
-            RequireAvailable();
-            EnsureInitialized();
+            RequireUsable();
 
             var players = new List<PlayerInfo>(MaxPlayerIndex);
             for (int index = MinPlayerIndex; index <= MaxPlayerIndex; index++)
@@ -110,9 +123,10 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
 
         static PlayerInfo InvokePlayerToggle(int index, string methodName, int expectedArgCount, string verb)
         {
-            RequireAvailable();
+            // Validate the caller's input BEFORE probing the environment, so a bad index fails the same
+            // way whether or not MPPM is installed.
             ValidateIndex(index);
-            EnsureInitialized();
+            RequireUsable();
 
             var player = GetPlayer(index)
                 ?? throw new MppmUnavailableException($"MPPM player {index} could not be resolved.");
@@ -172,12 +186,19 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
                     $"Player index must be between {MinPlayerIndex} and {MaxPlayerIndex}.");
         }
 
-        static void RequireAvailable()
+        /// <summary>
+        /// Require MPPM to be actually usable: its types must be present AND it must initialize. In Unity 6
+        /// the types are built into the editor, so type-presence alone is not enough — a project without the
+        /// MPPM package has no data store and initialization fails. Both cases surface the same typed error
+        /// (never a raw reflection/NRE) so callers and the MCP tools get an actionable message.
+        /// </summary>
+        static void RequireUsable()
         {
-            if (!IsAvailable)
+            if (!IsAvailable || !EnsureInitialized())
                 throw new MppmUnavailableException(
-                    "Multiplayer Play Mode (MPPM) is not available in this project. " +
-                    "Install the 'com.unity.multiplayer.playmode' package to use MPPM tools.");
+                    "Multiplayer Play Mode (MPPM) is not usable in this project. " +
+                    "Install and enable the 'com.unity.multiplayer.playmode' package (in a normal editor " +
+                    "session, not batch mode) to use MPPM tools.");
         }
 
         /// <summary>Scan every loaded assembly for a type — MPPM's internal types are not in a fixed assembly.</summary>
