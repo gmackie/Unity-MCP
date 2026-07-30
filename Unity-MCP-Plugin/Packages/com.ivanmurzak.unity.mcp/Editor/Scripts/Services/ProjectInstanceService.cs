@@ -100,9 +100,19 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Services
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
 
+            // MPPM virtual-player clones share the product name with the main editor — carry the
+            // clone identity (e.g. "MyGame (Player 2)") so list_engine_instances rows are
+            // human-distinguishable. The ProjectPathHash stays derived from THIS instance's own
+            // root (the clone's Library/VP/<id>/ directory, via ProjectRootPath): co-registered
+            // instances MUST hash differently, or the server registry's restart-dedup — same
+            // (hash, engine, machine) ⇒ "editor restart" — would evict the main editor's entry.
+            var projectName = Runtime.Utils.MppmUtils.IsMppmClone
+                ? $"{Application.productName} ({Runtime.Utils.MppmUtils.CloneName})"
+                : Application.productName;
+
             config.InstanceMetadata = BuildMetadata(
                 projectRoot: UnityMcpPluginEditor.ProjectRootPath,
-                projectName: Application.productName);
+                projectName: projectName);
         }
 
         /// <summary>

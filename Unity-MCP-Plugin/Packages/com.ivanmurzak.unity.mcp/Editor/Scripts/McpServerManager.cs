@@ -150,9 +150,20 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         public const string ExecutableName = "gamedev-mcp-server";
 
         public static string McpServerName
-            => string.IsNullOrEmpty(Application.productName)
-                ? "Unity Unknown"
-                : $"Unity {Application.productName}";
+        {
+            get
+            {
+                var baseName = string.IsNullOrEmpty(Application.productName)
+                    ? "Unity Unknown"
+                    : $"Unity {Application.productName}";
+                // MPPM virtual-player clones share the product name with the main editor — include
+                // the clone identity (e.g. "Unity MyGame (Player 2)") so their hub connections and
+                // any config entries stay distinguishable.
+                return MppmUtils.IsMppmClone
+                    ? $"{baseName} ({MppmUtils.CloneName})"
+                    : baseName;
+            }
+        }
 
         public static string OperationSystem =>
             RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? "win" :
@@ -385,6 +396,11 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         /// </param>
         public static Task<bool> DownloadServerBinaryIfNeeded(bool unattended = false)
         {
+            // MPPM virtual-player clones never launch their own server (they connect to the main
+            // editor's), so they must not download a duplicate binary into their cloned Library/.
+            if (MppmUtils.IsMppmClone)
+                return Task.FromResult(IsBinaryExists());
+
             if (EnvironmentUtils.IsCi())
             {
                 // Ignore in CI environment
@@ -1642,17 +1658,30 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                         publicUrl: publicUrl);
 
                 case AuthOption.token:
-                    return ServerLaunchArguments.BuildCommandLine(
+                    return AppendMultiInstance(ServerLaunchArguments.BuildCommandLine(
                         port, timeout, transportMethod, AuthOption.token,
-                        token: UnityMcpPluginEditor.Token);
+                        token: UnityMcpPluginEditor.Token));
 
                 default:
                     // none — plus any legacy value that somehow slipped past the load-time migration —
                     // launches an anonymous loopback server (crash-safe default, D8).
-                    return ServerLaunchArguments.BuildCommandLine(
-                        port, timeout, transportMethod, AuthOption.none);
+                    return AppendMultiInstance(ServerLaunchArguments.BuildCommandLine(
+                        port, timeout, transportMethod, AuthOption.none));
             }
         }
+
+        /// <summary>
+        /// MPPM (Multiplayer Play Mode) support: a local (none/token) server is launched in
+        /// multi-instance mode so the main editor AND its virtual-player clones can stay connected
+        /// simultaneously, addressable per agent session via the server's
+        /// <c>list_engine_instances</c> / <c>select_engine_instance</c> tools. With a single editor
+        /// connected the server routes exactly as before, so the flag is safe to pass always.
+        /// The literal arg matches <c>Consts.MCP.Server.Args.MultiInstance</c> in McpPlugin.Common
+        /// (not referenced directly — the constant ships in a newer McpPlugin than the bundled DLLs);
+        /// oauth mode is account-routed and ignores it, so it is not appended there.
+        /// </summary>
+        static string AppendMultiInstance(string commandLine)
+            => commandLine + " multi-instance=true";
 
         /// <summary>
         /// Schedules a verification check 5 seconds after startup to detect early crashes.
