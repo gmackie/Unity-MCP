@@ -113,6 +113,17 @@ Manage scene objects and hierarchy.
 | :--- | :--- | :--- |
 | **Tests / Run** | `tests-run` | Execute Unity tests (EditMode/PlayMode) with optional filters and return detailed results. |
 
+## 🎭 Multiplayer Play Mode (MPPM)
+Drive Unity's [Multiplayer Play Mode](https://docs.unity3d.com/Packages/com.unity.multiplayer.playmode@latest) virtual players for multiplayer testing. Each activated clone is a separate editor process that connects to the **main** editor's MCP server as a read-only instance. See [Multiplayer Play Mode](/mppm.md) for the full workflow and requirements.
+
+| Tool | ID | Description |
+| :--- | :--- | :--- |
+| **MPPM / List Players** | `mppm-list-players` | List MPPM virtual players (slots 1–4) with their name, state, and type. Player 1 is the main editor; 2–4 are clones. |
+| **MPPM / Activate Player** | `mppm-activate-player` | Launch an MPPM virtual-player clone (a separate editor instance). |
+| **MPPM / Deactivate Player** | `mppm-deactivate-player` | Shut down a running MPPM virtual-player clone. |
+
+> **Note**: The activate/deactivate tools are mutating and are disabled on clones — a clone can never spawn or tear down other clones. Requires the `com.unity.multiplayer.playmode` package (built in to Unity 6).
+
 ## 💡 Advanced & Editor
 | Tool | ID | Description |
 | :--- | :--- | :--- |

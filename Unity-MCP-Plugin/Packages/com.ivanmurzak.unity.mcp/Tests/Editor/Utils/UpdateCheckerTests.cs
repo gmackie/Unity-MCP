@@ -12,6 +12,7 @@
 using System.IO;
 using NUnit.Framework;
 using com.IvanMurzak.Unity.MCP.Editor.Utils;
+using UnityEditor.PackageManager;
 
 namespace com.IvanMurzak.Unity.MCP.Editor.Tests
 {
@@ -66,6 +67,15 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Tests
             UpdateChecker.ClearPreferences();
             if (UpdateChecker.IsDisabledForProject)
                 UpdateChecker.IsDisabledForProject = false;
+
+            // ShouldCheckForUpdates() is gated first by the package SOURCE (only Registry-sourced
+            // installs check for updates). In this dev project the plugin is an embedded package,
+            // so the real gate is closed and would force every ShouldCheckForUpdates() result to
+            // false — masking the preference/cooldown logic these tests exist to verify. Force the
+            // gate open so the tests exercise their intended behavior regardless of how the package
+            // was installed; TearDown restores the real environment lookup. (The per-source gate
+            // itself is covered directly by the ShouldCheckForUpdatesForPackageSource_* tests.)
+            UpdateChecker.PackageSourceAllowsCheckOverride = true;
         }
 
         [TearDown]
@@ -77,6 +87,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Tests
             UpdateChecker.ClearPreferences();
             if (UpdateChecker.IsDisabledForProject)
                 UpdateChecker.IsDisabledForProject = false;
+
+            // Restore the real package-source lookup so no other fixture inherits the override.
+            UpdateChecker.PackageSourceAllowsCheckOverride = null;
         }
 
         #region Version Comparison Tests
@@ -158,6 +171,34 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Tests
         {
             Assert.Greater(UpdateChecker.CompareVersions("1.0.0.1", "1.0.0"), 0);
             Assert.Less(UpdateChecker.CompareVersions("1.0.0", "1.0.0.1"), 0);
+        }
+
+        #endregion
+
+        #region Package Source Tests
+
+        [Test]
+        public void ShouldCheckForUpdatesForPackageSource_Registry_ReturnsTrue()
+        {
+            Assert.IsTrue(UpdateChecker.ShouldCheckForUpdatesForPackageSource(PackageSource.Registry));
+        }
+
+        [Test]
+        public void ShouldCheckForUpdatesForPackageSource_Local_ReturnsFalse()
+        {
+            Assert.IsFalse(UpdateChecker.ShouldCheckForUpdatesForPackageSource(PackageSource.Local));
+        }
+
+        [Test]
+        public void ShouldCheckForUpdatesForPackageSource_Git_ReturnsFalse()
+        {
+            Assert.IsFalse(UpdateChecker.ShouldCheckForUpdatesForPackageSource(PackageSource.Git));
+        }
+
+        [Test]
+        public void ShouldCheckForUpdatesForPackageSource_Embedded_ReturnsFalse()
+        {
+            Assert.IsFalse(UpdateChecker.ShouldCheckForUpdatesForPackageSource(PackageSource.Embedded));
         }
 
         #endregion

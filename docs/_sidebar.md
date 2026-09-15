@@ -6,6 +6,7 @@
 - **Tools & Features**
   - [Skills and Tools Reference](/#skills-and-tools-reference)
   - [Default MCP Tools](/default-mcp-tools.md)
+  - [Multiplayer Play Mode (MPPM)](/mppm.md)
   - [Customize Tools](/#customize-tools)
   - [Runtime Usage](/#runtime-usage-in-game)
 
