@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using com.IvanMurzak.Unity.MCP.Editor.UI;
 using Microsoft.Extensions.Logging;
 using UnityEditor;
+using UnityEditor.PackageManager;
 using UnityEngine;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -184,6 +185,9 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
         /// </remarks>
         public static bool ShouldCheckForUpdates()
         {
+            if (!ShouldCheckForUpdatesForCurrentPackageSource())
+                return false;
+
             // 1. Team-wide kill-switch — short-circuits before any per-user state is consulted.
             if (IsDisabledForProject)
                 return false;
@@ -204,6 +208,32 @@ namespace com.IvanMurzak.Unity.MCP.Editor.Utils
             }
 
             return true;
+        }
+
+        internal static bool ShouldCheckForUpdatesForPackageSource(PackageSource source)
+        {
+            return source == PackageSource.Registry;
+        }
+
+        /// <summary>
+        /// Test seam for <see cref="ShouldCheckForUpdatesForCurrentPackageSource"/>. That gate
+        /// reads how THIS package was installed (Registry vs embedded/local/git), which is a
+        /// property of the environment, not of any preference the tests control. When the plugin
+        /// is embedded — as it is in its own dev project's EditMode suite — the real source is not
+        /// Registry, so the gate forces <see cref="ShouldCheckForUpdates"/> to false and the
+        /// preference/cooldown tests become environment-dependent. Tests set this to a fixed value
+        /// to exercise the preference logic deterministically; <c>null</c> (the default, and the
+        /// only value in production) falls through to the real <see cref="PackageInfo"/> lookup.
+        /// </summary>
+        internal static bool? PackageSourceAllowsCheckOverride { get; set; }
+
+        private static bool ShouldCheckForUpdatesForCurrentPackageSource()
+        {
+            if (PackageSourceAllowsCheckOverride.HasValue)
+                return PackageSourceAllowsCheckOverride.Value;
+
+            var packageInfo = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(UpdateChecker).Assembly);
+            return packageInfo == null || ShouldCheckForUpdatesForPackageSource(packageInfo.source);
         }
 
         /// <summary>
