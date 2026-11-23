@@ -59,6 +59,7 @@ namespace com.IvanMurzak.Unity.MCP.Editor
     [InitializeOnLoad]
     public static class McpServerManager
     {
+<<<<<<< HEAD
         // The LEGACY, per-user-hive-wide EditorPrefs key (Fix B, 07 §7.2). Historically ALL projects and
         // all modern editor versions shared this single key in the per-user EditorPrefs hive
         // (Windows: HKCU\Software\Unity Technologies\Unity Editor 5.x), so concurrent editors — even on
@@ -73,6 +74,12 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         static string ProcessIdKey => ProcessIdKeyForDirectory(Environment.CurrentDirectory);
 
         const string McpServerProcessName = "gamedev-mcp-server";
+=======
+        static string ProcessIdKey => MppmUtils.IsMppmClone
+            ? $"McpServerManager_ProcessId_{MppmUtils.CloneId}"
+            : "McpServerManager_ProcessId";
+        const string McpServerProcessName = "unity-mcp-server";
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
 
         static readonly ILogger _logger = UnityLoggerFactory.LoggerFactory.CreateLogger(typeof(McpServerManager));
         static readonly ReactiveProperty<McpServerStatus> _serverStatus = new(McpServerStatus.Stopped);
@@ -156,9 +163,12 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 var baseName = string.IsNullOrEmpty(Application.productName)
                     ? "Unity Unknown"
                     : $"Unity {Application.productName}";
+<<<<<<< HEAD
                 // MPPM virtual-player clones share the product name with the main editor — include
                 // the clone identity (e.g. "Unity MyGame (Player 2)") so their hub connections and
                 // any config entries stay distinguishable.
+=======
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
                 return MppmUtils.IsMppmClone
                     ? $"{baseName} ({MppmUtils.CloneName})"
                     : baseName;
@@ -396,8 +406,11 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         /// </param>
         public static Task<bool> DownloadServerBinaryIfNeeded(bool unattended = false)
         {
+<<<<<<< HEAD
             // MPPM virtual-player clones never launch their own server (they connect to the main
             // editor's), so they must not download a duplicate binary into their cloned Library/.
+=======
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
             if (MppmUtils.IsMppmClone)
                 return Task.FromResult(IsBinaryExists());
 

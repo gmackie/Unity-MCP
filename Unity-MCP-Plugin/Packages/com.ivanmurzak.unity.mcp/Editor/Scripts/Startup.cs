@@ -10,7 +10,10 @@
 
 #nullable enable
 using System.Collections.Generic;
+<<<<<<< HEAD
 using System.Text.Json;
+=======
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
 using com.IvanMurzak.Unity.MCP.Editor.UI;
 using com.IvanMurzak.Unity.MCP.Editor.Utils;
 using com.IvanMurzak.Unity.MCP.Runtime.Utils;
@@ -32,7 +35,14 @@ namespace com.IvanMurzak.Unity.MCP.Editor
         static Startup()
         {
             if (MppmUtils.IsMppmClone)
+<<<<<<< HEAD
                 ConfigureMppmClone();
+=======
+            {
+                UnityMcpPluginEditor.KeepConnected = true;
+                UnityMcpPluginEditor.KeepServerRunning = true;
+            }
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
 
             UnityMcpPluginEditor.Instance.BuildMcpPluginIfNeeded();
             UnityMcpPluginEditor.Instance.AddUnityLogCollectorIfNeeded(() => new BufferedFileLogStorage());
@@ -142,6 +152,29 @@ namespace com.IvanMurzak.Unity.MCP.Editor
                 "object-modify",
                 // A clone must never be able to spawn or tear down other clones.
                 "mppm-activate-player", "mppm-deactivate-player",
+            };
+
+            foreach (var toolName in writeTools)
+                tools.SetToolEnabled(toolName, false);
+        }
+
+        static void DisableWriteToolsForClone()
+        {
+            var tools = UnityMcpPluginEditor.Instance.Tools;
+            if (tools == null) return;
+
+            var writeTools = new HashSet<string>
+            {
+                "script-update-or-create", "script-delete",
+                "assets-create-folder", "assets-delete", "assets-move", "assets-copy", "assets-modify",
+                "assets-prefab-create", "assets-prefab-save", "assets-prefab-close", "assets-prefab-open",
+                "assets-material-create",
+                "scene-create", "scene-save",
+                "package-add", "package-remove",
+                "gameobject-create", "gameobject-destroy", "gameobject-duplicate",
+                "gameobject-modify", "gameobject-set-parent",
+                "gameobject-component-add", "gameobject-component-destroy", "gameobject-component-modify",
+                "object-modify",
             };
 
             foreach (var toolName in writeTools)

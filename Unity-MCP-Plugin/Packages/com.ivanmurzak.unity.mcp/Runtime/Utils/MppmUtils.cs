@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 /*
 ┌──────────────────────────────────────────────────────────────────┐
 │  Author: Ivan Murzak (https://github.com/IvanMurzak)             │
@@ -8,6 +9,8 @@
 └──────────────────────────────────────────────────────────────────┘
 */
 
+=======
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
 #nullable enable
 using System;
 using System.Text.RegularExpressions;
@@ -28,6 +31,7 @@ namespace com.IvanMurzak.Unity.MCP.Runtime.Utils
 
         static MppmUtils()
         {
+<<<<<<< HEAD
             var parsed = Parse(Environment.GetCommandLineArgs());
             _isMppmClone = parsed.IsMppmClone;
             _cloneName = parsed.CloneName;
@@ -68,6 +72,13 @@ namespace com.IvanMurzak.Unity.MCP.Runtime.Utils
             var isMppmClone = false;
             string? cloneName = null;
             string? cloneId = null;
+=======
+            var args = Environment.GetCommandLineArgs();
+            _isMppmClone = false;
+            _cloneName = null;
+            _cloneId = null;
+            _cloneSuffix = string.Empty;
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
 
             for (int i = 0; i < args.Length; i++)
             {
@@ -75,27 +86,48 @@ namespace com.IvanMurzak.Unity.MCP.Runtime.Utils
 
                 if (arg == "-editor-mode" && i + 1 < args.Length && args[i + 1] == "com.unity.mppm.clone")
                 {
+<<<<<<< HEAD
                     isMppmClone = true;
+=======
+                    _isMppmClone = true;
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
                     i++;
                 }
                 else if (arg == "-name" && i + 1 < args.Length)
                 {
+<<<<<<< HEAD
                     cloneName = args[i + 1];
+=======
+                    _cloneName = args[i + 1];
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
                     i++;
                 }
                 else if (arg.StartsWith("-vpId=", StringComparison.Ordinal))
                 {
+<<<<<<< HEAD
                     cloneId = arg.Substring("-vpId=".Length);
                 }
                 else if (arg == "-vpId" && i + 1 < args.Length)
                 {
                     cloneId = args[i + 1];
+=======
+                    _cloneId = arg.Substring("-vpId=".Length);
+                }
+                else if (arg == "-vpId" && i + 1 < args.Length)
+                {
+                    _cloneId = args[i + 1];
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
                     i++;
                 }
             }
 
+<<<<<<< HEAD
             var cloneSuffix = cloneName != null ? ToKebabCase(cloneName) : string.Empty;
             return new CloneArgs(isMppmClone, cloneName, cloneId, cloneSuffix);
+=======
+            if (_cloneName != null)
+                _cloneSuffix = ToKebabCase(_cloneName);
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
         }
 
         static string ToKebabCase(string name)

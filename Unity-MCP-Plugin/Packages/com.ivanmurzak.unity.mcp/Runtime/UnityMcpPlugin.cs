@@ -264,6 +264,7 @@ namespace com.IvanMurzak.Unity.MCP
         /// </remarks>
         public static int GeneratePortFromDirectory()
             => GeneratePortFromDirectory(Environment.CurrentDirectory);
+<<<<<<< HEAD
 
         /// <summary>
         /// Deterministic TCP port for an explicit <paramref name="directory"/>, derived via the shared
@@ -272,5 +273,30 @@ namespace com.IvanMurzak.Unity.MCP
         /// </summary>
         public static int GeneratePortFromDirectory(string directory)
             => ProjectIdentity.DerivePortV2(directory);
+=======
+
+        /// <summary>
+        /// Generate a deterministic TCP port based on the given directory path.
+        /// Used by the main editor to compute ports for MPPM clone directories.
+        /// </summary>
+        public static int GeneratePortFromDirectory(string directory)
+        {
+            const int MinPort = 20000;
+            const int MaxPort = 29999;
+            const int PortRange = MaxPort - MinPort + 1;
+
+            var normalizedDir = directory.ToLowerInvariant();
+
+            using (var sha256 = System.Security.Cryptography.SHA256.Create())
+            {
+                var hashBytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(normalizedDir));
+
+                // Use first 4 bytes as an unsigned integer to avoid Math.Abs(int.MinValue) overflow
+                var hash = (uint)BitConverter.ToInt32(hashBytes, 0);
+
+                return MinPort + (int)(hash % PortRange);
+            }
+        }
+>>>>>>> b1b74bf8 (feat: add MPPM (Multiplayer Play Mode) support)
     }
 }
